@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Vortex AI Assistant
+Comment=Modern distributed AI assistant for Windows and Pardus/Linux
+Exec=/opt/vortex-ai-assistant/Vortex.Desktop
+Icon=vortex-ai-assistant
+Terminal=false
+Type=Application
+Categories=Utility;Development;ArtificialIntelligence;
+StartupNotify=true

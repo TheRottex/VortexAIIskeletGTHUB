@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+artifacts/
+references/
+*.user
+*.db
+*.db-shm
+*.db-wal
+.env
+Vortex.Server/App_Data/
