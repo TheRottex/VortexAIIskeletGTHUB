@@ -11,7 +11,6 @@ public static class VortexRoles
     public const string Support = "Support";
     public const string Administrator = "Administrator";
     public const string Owner = "Owner";
-
     public static readonly string[] All = [User, Support, Administrator, Owner];
 }
 
@@ -24,6 +23,7 @@ public static class VortexFeatures
     public const string VoiceInput = "voice-input";
     public const string TextToSpeech = "text-to-speech";
     public const string LocalTools = "local-tools";
+    public const string HermesAgent = "hermes-agent";
 }
 
 public static class SupportedFileTypes
@@ -37,6 +37,8 @@ public static class SupportedFileTypes
 
 public enum ChatRole { System, User, Assistant, Tool }
 public enum LocalToolRiskLevel { Low, Medium, High, Critical }
+public enum HermesProfileStatus { Provisioning, Ready, ProvisioningFailed, Disabled }
+public enum AgentExecutionStatus { Started, Succeeded, Failed, LimitRejected, TimedOut, Cancelled }
 
 public sealed record RegisterRequest(string Email, string Password, string DisplayName);
 public sealed record LoginRequest(string Email, string Password);
@@ -46,10 +48,8 @@ public sealed record UserProfileDto(Guid Id, string Email, string DisplayName, s
 public sealed record ChatSessionDto(Guid Id, string Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 public sealed record CreateChatRequest(string? Title = null);
 public sealed record RenameChatRequest(string Title);
-
 public sealed record ChatMessageDto(Guid Id, Guid ChatSessionId, string Role, string Content, DateTimeOffset CreatedAt, string? ModelName, bool IsStreaming, string? ErrorMessage);
 public sealed record AiChatMessage(string Role, string Content);
-
 public sealed record ChatCompletionRequest(Guid? ChatSessionId, string Message, string? RequestedModel, string? SystemPrompt, IReadOnlyList<AttachedFileDto>? Files, bool Stream = true);
 public sealed record ChatCompletionChunk(string Delta, bool IsFinal, string? ModelName = null, string? ErrorMessage = null, string? CorrelationId = null);
 public sealed record AttachedFileDto(Guid Id, string FileName, string ContentType, long SizeBytes, string? ExtractedText = null);
@@ -60,6 +60,25 @@ public sealed record SubscriptionPlanDto(Guid Id, string Name, string DisplayNam
 public sealed record PlanModelPolicyDto(Guid Id, Guid PlanId, Guid ProviderId, Guid ModelId, int Priority, int DailyUsageLimit, int MonthlyUsageLimit, string FeatureName, Guid? FallbackProviderId, Guid? FallbackModelId, bool IsActive);
 public sealed record FeatureEntitlementDto(Guid Id, Guid PlanId, string FeatureName, bool IsEnabled, int? Limit, bool RequiresConfirmation);
 public sealed record StorageQuotaDto(long QuotaBytes, long UsedBytes, long CommittedQuotaBytes, long AvailablePhysicalBytes);
+
+public sealed record AgentPolicyDto(
+    int DailyAgentRunLimit,
+    int ActiveScheduledTaskLimit,
+    int PersistentMemoryLimit,
+    bool IsSubAgentEnabled,
+    bool IsTerminalEnabled,
+    bool IsSystemCommandEnabled,
+    int MaxRunSeconds,
+    int MaxConcurrentRuns,
+    string FileAccessScope);
+
+public sealed record AgentProfileDto(Guid Id, Guid UserId, string HermesProfileName, string HermesHomePath, string Status, DateTimeOffset CreatedAt, DateTimeOffset? LastStartedAt);
+public sealed record AgentUsageDto(DateOnly Date, int AgentRuns, int InputTokens, int OutputTokens, decimal EstimatedCost, DateTimeOffset UpdatedAt);
+public sealed record AgentStatusDto(AgentProfileDto? Profile, AgentPolicyDto Policy, AgentUsageDto Usage, int RemainingRunsToday, int ActiveScheduledTaskCount, int RemainingScheduledTasks);
+public sealed record AgentChatRequest(string Message, Guid? RequestedProfileId = null, string? Model = null);
+public sealed record AgentChatResponse(string RequestId, string Response, string ProfileName, int RemainingRunsToday);
+public sealed record AgentTaskDto(Guid Id, string Name, string Schedule, string TimeZone, bool IsEnabled, DateTimeOffset CreatedAt);
+public sealed record CreateAgentTaskRequest(string Name, string Schedule, string TimeZone);
 
 public sealed record LocalAgentHello(string AgentName, string Version, string Platform, IReadOnlyList<LocalToolDescriptor> Tools);
 public sealed record LocalToolDescriptor(string Name, string Description, bool IsEnabled, bool RequiresConfirmation, LocalToolRiskLevel RiskLevel);

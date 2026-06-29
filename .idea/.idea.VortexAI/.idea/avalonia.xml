@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="Vortex.Desktop/App.axaml" value="Vortex.Desktop/Vortex.Desktop.csproj" />
+        <entry key="Vortex.Desktop/MainWindow.axaml" value="Vortex.Desktop/Vortex.Desktop.csproj" />
+      </map>
+    </option>
+  </component>
+</project>

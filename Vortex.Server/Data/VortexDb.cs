@@ -13,12 +13,7 @@ public sealed class VortexDb
         var dataDir = configuration["Vortex:DataDirectory"];
         if (string.IsNullOrWhiteSpace(dataDir)) dataDir = Path.Combine(environment.ContentRootPath, "App_Data");
         Directory.CreateDirectory(dataDir);
-        _connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = Path.Combine(dataDir, "vortex.db"),
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared
-        }.ToString();
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = Path.Combine(dataDir, "vortex.db"), Mode = SqliteOpenMode.ReadWriteCreate, Cache = SqliteCacheMode.Shared }.ToString();
     }
 
     public async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken = default)
@@ -48,15 +43,20 @@ public sealed class VortexDb
     {
         var count = await ScalarLongAsync(connection, "SELECT COUNT(*) FROM SubscriptionPlans", cancellationToken);
         if (count > 0) return;
+
         var freePlanId = Guid.NewGuid().ToString();
         var paidPlanId = Guid.NewGuid().ToString();
         await ExecuteAsync(connection, "INSERT INTO SubscriptionPlans (Id, Name, DisplayName, StorageQuotaBytes, DailyRequestLimit, MonthlyRequestLimit, IsActive) VALUES ($id, 'free', 'Ücretsiz Plan', 1073741824, 50, 1000, 1)", cancellationToken, ("$id", freePlanId));
         await ExecuteAsync(connection, "INSERT INTO SubscriptionPlans (Id, Name, DisplayName, StorageQuotaBytes, DailyRequestLimit, MonthlyRequestLimit, IsActive) VALUES ($id, 'paid', 'Ücretli Plan', 53687091200, 500, 15000, 1)", cancellationToken, ("$id", paidPlanId));
-        foreach (var feature in new[] { "chat", "premium-chat", "file-context", "voice-input", "text-to-speech", "local-tools" })
+
+        foreach (var feature in new[] { "chat", "premium-chat", "file-context", "voice-input", "text-to-speech", "local-tools", "hermes-agent" })
         {
-            await ExecuteAsync(connection, "INSERT INTO FeatureEntitlements (Id, PlanId, FeatureName, IsEnabled, LimitValue, RequiresConfirmation) VALUES ($id, $planId, $feature, 1, $limit, $confirmation)", cancellationToken, ("$id", Guid.NewGuid().ToString()), ("$planId", freePlanId), ("$feature", feature), ("$limit", feature == "premium-chat" ? 5 : 20), ("$confirmation", feature == "local-tools" ? 1 : 0));
+            await ExecuteAsync(connection, "INSERT INTO FeatureEntitlements (Id, PlanId, FeatureName, IsEnabled, LimitValue, RequiresConfirmation) VALUES ($id, $planId, $feature, 1, $limit, $confirmation)", cancellationToken, ("$id", Guid.NewGuid().ToString()), ("$planId", freePlanId), ("$feature", feature), ("$limit", feature == "premium-chat" || feature == "hermes-agent" ? 5 : 20), ("$confirmation", feature == "local-tools" ? 1 : 0));
             await ExecuteAsync(connection, "INSERT INTO FeatureEntitlements (Id, PlanId, FeatureName, IsEnabled, LimitValue, RequiresConfirmation) VALUES ($id, $planId, $feature, 1, $limit, $confirmation)", cancellationToken, ("$id", Guid.NewGuid().ToString()), ("$planId", paidPlanId), ("$feature", feature), ("$limit", feature == "premium-chat" ? 20 : 200), ("$confirmation", feature == "local-tools" ? 1 : 0));
         }
+
+        await ExecuteAsync(connection, "INSERT INTO PlanAgentPolicies (Id, PlanId, DailyAgentRunLimit, ActiveScheduledTaskLimit, PersistentMemoryLimit, IsSubAgentEnabled, IsTerminalEnabled, IsSystemCommandEnabled, MaxRunSeconds, MaxConcurrentRuns, FileAccessScope) VALUES ($id, $planId, 5, 3, 25, 0, 0, 0, 60, 1, 'workspace')", cancellationToken, ("$id", Guid.NewGuid().ToString()), ("$planId", freePlanId));
+        await ExecuteAsync(connection, "INSERT INTO PlanAgentPolicies (Id, PlanId, DailyAgentRunLimit, ActiveScheduledTaskLimit, PersistentMemoryLimit, IsSubAgentEnabled, IsTerminalEnabled, IsSystemCommandEnabled, MaxRunSeconds, MaxConcurrentRuns, FileAccessScope) VALUES ($id, $planId, 100, 20, 1000, 1, 0, 0, 300, 3, 'workspace')", cancellationToken, ("$id", Guid.NewGuid().ToString()), ("$planId", paidPlanId));
     }
 
     private static async Task SeedProvidersAsync(SqliteConnection connection, CancellationToken cancellationToken)
@@ -102,6 +102,11 @@ public sealed class VortexDb
         "CREATE TABLE IF NOT EXISTS SubscriptionPlans (Id TEXT PRIMARY KEY, Name TEXT NOT NULL UNIQUE, DisplayName TEXT NOT NULL, StorageQuotaBytes INTEGER NOT NULL, DailyRequestLimit INTEGER NOT NULL, MonthlyRequestLimit INTEGER NOT NULL, IsActive INTEGER NOT NULL);",
         "CREATE TABLE IF NOT EXISTS Users (Id TEXT PRIMARY KEY, Email TEXT NOT NULL UNIQUE, DisplayName TEXT NOT NULL, PasswordHash TEXT NOT NULL, PasswordSalt TEXT NOT NULL, Role TEXT NOT NULL, PlanId TEXT NOT NULL, StorageUsedBytes INTEGER NOT NULL DEFAULT 0, CreatedAt TEXT NOT NULL, FOREIGN KEY (PlanId) REFERENCES SubscriptionPlans(Id));",
         "CREATE TABLE IF NOT EXISTS FeatureEntitlements (Id TEXT PRIMARY KEY, PlanId TEXT NOT NULL, FeatureName TEXT NOT NULL, IsEnabled INTEGER NOT NULL, LimitValue INTEGER NULL, RequiresConfirmation INTEGER NOT NULL, FOREIGN KEY (PlanId) REFERENCES SubscriptionPlans(Id));",
+        "CREATE TABLE IF NOT EXISTS PlanAgentPolicies (Id TEXT PRIMARY KEY, PlanId TEXT NOT NULL UNIQUE, DailyAgentRunLimit INTEGER NOT NULL, ActiveScheduledTaskLimit INTEGER NOT NULL, PersistentMemoryLimit INTEGER NOT NULL, IsSubAgentEnabled INTEGER NOT NULL, IsTerminalEnabled INTEGER NOT NULL, IsSystemCommandEnabled INTEGER NOT NULL, MaxRunSeconds INTEGER NOT NULL, MaxConcurrentRuns INTEGER NOT NULL, FileAccessScope TEXT NOT NULL, FOREIGN KEY (PlanId) REFERENCES SubscriptionPlans(Id));",
+        "CREATE TABLE IF NOT EXISTS UserAgentProfiles (Id TEXT PRIMARY KEY, UserId TEXT NOT NULL UNIQUE, HermesProfileName TEXT NOT NULL UNIQUE, HermesHomePath TEXT NOT NULL, Status TEXT NOT NULL, CreatedAt TEXT NOT NULL, LastStartedAt TEXT NULL, FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE);",
+        "CREATE TABLE IF NOT EXISTS AgentUsageCounters (Id TEXT PRIMARY KEY, UserId TEXT NOT NULL, Date TEXT NOT NULL, AgentRuns INTEGER NOT NULL, InputTokens INTEGER NOT NULL, OutputTokens INTEGER NOT NULL, EstimatedCost REAL NOT NULL, UpdatedAt TEXT NOT NULL, UNIQUE(UserId, Date), FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE);",
+        "CREATE TABLE IF NOT EXISTS AgentExecutionLogs (Id TEXT PRIMARY KEY, UserId TEXT NOT NULL, AgentProfileId TEXT NULL, RequestId TEXT NOT NULL, StartedAt TEXT NOT NULL, FinishedAt TEXT NULL, Status TEXT NOT NULL, ErrorCode TEXT NULL, Model TEXT NULL, WasLimitRejected INTEGER NOT NULL, FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE, FOREIGN KEY (AgentProfileId) REFERENCES UserAgentProfiles(Id));",
+        "CREATE TABLE IF NOT EXISTS AgentScheduledTasks (Id TEXT PRIMARY KEY, UserId TEXT NOT NULL, AgentProfileId TEXT NOT NULL, ExternalHermesTaskId TEXT NULL, Name TEXT NOT NULL, Schedule TEXT NOT NULL, TimeZone TEXT NOT NULL, IsEnabled INTEGER NOT NULL, CreatedAt TEXT NOT NULL, FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE, FOREIGN KEY (AgentProfileId) REFERENCES UserAgentProfiles(Id) ON DELETE CASCADE);",
         "CREATE TABLE IF NOT EXISTS AiProviders (Id TEXT PRIMARY KEY, Name TEXT NOT NULL, ProviderType TEXT NOT NULL, BaseUrl TEXT NOT NULL, EncryptedApiKey TEXT NULL, IsActive INTEGER NOT NULL, Priority INTEGER NOT NULL, LastError TEXT NULL);",
         "CREATE TABLE IF NOT EXISTS AiModels (Id TEXT PRIMARY KEY, ProviderId TEXT NOT NULL, Name TEXT NOT NULL, DisplayName TEXT NOT NULL, IsPremium INTEGER NOT NULL, SupportsStreaming INTEGER NOT NULL, SupportsTools INTEGER NOT NULL, ContextWindowTokens INTEGER NOT NULL, InputCostPerMillion REAL NOT NULL, OutputCostPerMillion REAL NOT NULL, IsActive INTEGER NOT NULL, FOREIGN KEY (ProviderId) REFERENCES AiProviders(Id));",
         "CREATE TABLE IF NOT EXISTS PlanModelPolicies (Id TEXT PRIMARY KEY, PlanId TEXT NOT NULL, ProviderId TEXT NOT NULL, ModelId TEXT NOT NULL, Priority INTEGER NOT NULL, DailyUsageLimit INTEGER NOT NULL, MonthlyUsageLimit INTEGER NOT NULL, FeatureName TEXT NOT NULL, FallbackProviderId TEXT NULL, FallbackModelId TEXT NULL, IsActive INTEGER NOT NULL, FOREIGN KEY (PlanId) REFERENCES SubscriptionPlans(Id), FOREIGN KEY (ProviderId) REFERENCES AiProviders(Id), FOREIGN KEY (ModelId) REFERENCES AiModels(Id));",

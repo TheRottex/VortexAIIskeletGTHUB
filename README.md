@@ -39,6 +39,61 @@ Desktop ilk bağlantıda geliştirme kullanıcısı olarak `owner@vortex.local` 
 dotnet test VortexAI.sln
 ```
 
+Hermes izolasyon ve Free plan limitleri için çalışan integration test:
+
+```bash
+dotnet test VortexAI.sln -c Release --filter HermesIsolationIntegrationTests
+```
+
+Tam doğrulama komutu:
+
+```bash
+dotnet build VortexAI.sln -c Release
+dotnet test VortexAI.sln -c Release --no-build
+```
+
+## Hermes Agent izolasyonu
+
+Kullanıcı kayıt olduğunda Vortex Server otomatik olarak kullanıcıya özel Hermes profilini hazırlar:
+
+```text
+App_Data/hermes-profiles/{userId}/
+├── config
+├── memory
+├── sessions
+├── cron
+├── skills
+├── workspace
+└── logs
+```
+
+E-posta klasör adı olarak kullanılmaz. Server, profile erişimini token içindeki `UserId` üzerinden yapar; istemciden gelen farklı profil ID değerleri dikkate alınmaz.
+
+Free plan agent policy seed değerleri:
+
+- Günlük Hermes agent çalıştırma limiti: 5
+- Aktif zamanlanmış görev limiti: 3
+- Kalıcı hafıza limiti: 25
+- Alt ajan: kapalı
+- Terminal/sistem komutu: kapalı
+- Dosya erişimi: yalnızca workspace
+- Maksimum görev süresi: 60 saniye
+- Eşzamanlı agent görevi: 1
+
+Hermes gateway varsayılan olarak test/geliştirme için fake çalışır:
+
+```json
+{
+  "Hermes": {
+    "UseFakeGateway": true,
+    "ProfilesRoot": "App_Data/hermes-profiles",
+    "ExecutablePath": ""
+  }
+}
+```
+
+Gerçek Hermes executable kullanılacaksa `Hermes:UseFakeGateway=false` ve `Hermes:ExecutablePath` yapılandırılmalıdır.
+
 ## Pardus/Linux build
 
 ```bash

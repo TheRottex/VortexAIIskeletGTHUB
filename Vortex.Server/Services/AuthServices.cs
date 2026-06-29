@@ -55,7 +55,7 @@ public sealed class TokenService(IConfiguration configuration)
     }
 }
 
-public sealed class AuthService(VortexDb db, TokenService tokens)
+public sealed class AuthService(VortexDb db, TokenService tokens, IHermesProfileService hermesProfiles)
 {
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
@@ -69,6 +69,7 @@ public sealed class AuthService(VortexDb db, TokenService tokens)
         var hash = VortexDb.HashSecret(request.Password, salt);
         await VortexDb.ExecuteAsync(connection, "INSERT INTO Users (Id, Email, DisplayName, PasswordHash, PasswordSalt, Role, PlanId, StorageUsedBytes, CreatedAt) VALUES ($id, $email, $displayName, $hash, $salt, $role, $planId, 0, $createdAt)", cancellationToken,
             ("$id", id.ToString()), ("$email", request.Email.Trim().ToLowerInvariant()), ("$displayName", request.DisplayName.Trim()), ("$hash", hash), ("$salt", salt), ("$role", role), ("$planId", planId), ("$createdAt", DateTimeOffset.UtcNow.ToString("O")));
+        await hermesProfiles.EnsureProfileAsync(id, cancellationToken);
         return CreateAuthResponse(await GetProfileAsync(id, cancellationToken) ?? throw new InvalidOperationException("Kullanıcı oluşturulamadı."));
     }
 
