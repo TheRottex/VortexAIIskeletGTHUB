@@ -46,7 +46,7 @@ public sealed class TokenService(IConfiguration configuration)
         }, "VortexJwt"));
     }
 
-    private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    public static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     private static byte[] Base64UrlDecode(string value)
     {
         var padded = value.Replace('-', '+').Replace('_', '/');
@@ -57,18 +57,27 @@ public sealed class TokenService(IConfiguration configuration)
 
 public sealed class AuthService(VortexDb db, TokenService tokens, IHermesProfileService hermesProfiles)
 {
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
+    public Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
+        => RegisterInternalAsync(request.Email, request.Password, request.DisplayName, allowFirstOwner: true, cancellationToken);
+
+    public Task<AuthResponse> RegisterWebUserAsync(WebRegisterRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || request.Password.Length < 8) throw new InvalidOperationException("E-posta ve en az 8 karakter parola gereklidir.");
+        if (!request.AcceptTerms) throw new InvalidOperationException("Kullanım koşulları onayı gereklidir.");
+        return RegisterInternalAsync(request.Email, request.Password, request.DisplayName, allowFirstOwner: false, cancellationToken);
+    }
+
+    private async Task<AuthResponse> RegisterInternalAsync(string email, string password, string displayName, bool allowFirstOwner, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(email) || password.Length < 8) throw new InvalidOperationException("E-posta ve en az 8 karakter parola gereklidir.");
         await using var connection = await db.OpenAsync(cancellationToken);
         var existingUsers = await VortexDb.ScalarLongAsync(connection, "SELECT COUNT(*) FROM Users", cancellationToken);
         var planId = await GetDefaultPlanIdAsync(connection, cancellationToken);
-        var role = existingUsers == 0 ? VortexRoles.Owner : VortexRoles.User;
+        var role = allowFirstOwner && existingUsers == 0 ? VortexRoles.Owner : VortexRoles.User;
         var id = Guid.NewGuid();
         var salt = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        var hash = VortexDb.HashSecret(request.Password, salt);
+        var hash = VortexDb.HashSecret(password, salt);
         await VortexDb.ExecuteAsync(connection, "INSERT INTO Users (Id, Email, DisplayName, PasswordHash, PasswordSalt, Role, PlanId, StorageUsedBytes, CreatedAt) VALUES ($id, $email, $displayName, $hash, $salt, $role, $planId, 0, $createdAt)", cancellationToken,
-            ("$id", id.ToString()), ("$email", request.Email.Trim().ToLowerInvariant()), ("$displayName", request.DisplayName.Trim()), ("$hash", hash), ("$salt", salt), ("$role", role), ("$planId", planId), ("$createdAt", DateTimeOffset.UtcNow.ToString("O")));
+            ("$id", id.ToString()), ("$email", email.Trim().ToLowerInvariant()), ("$displayName", displayName.Trim()), ("$hash", hash), ("$salt", salt), ("$role", role), ("$planId", planId), ("$createdAt", DateTimeOffset.UtcNow.ToString("O")));
         await hermesProfiles.EnsureProfileAsync(id, cancellationToken);
         return CreateAuthResponse(await GetProfileAsync(id, cancellationToken) ?? throw new InvalidOperationException("Kullanıcı oluşturulamadı."));
     }

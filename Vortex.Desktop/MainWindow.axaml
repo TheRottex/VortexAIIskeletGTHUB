@@ -10,65 +10,80 @@
       <GradientStop Color="#15172E" Offset="1" />
     </LinearGradientBrush>
   </Window.Background>
-  <Grid ColumnDefinitions="260,*,300" RowDefinitions="64,*" Margin="14">
-    <Border Grid.RowSpan="2" Grid.Column="0" Background="#181B34" CornerRadius="20" Padding="16" Margin="0,0,12,0">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Spacing="12">
-          <TextBlock Text="Vortex" FontSize="28" FontWeight="Bold" Foreground="#F8FAFC" />
-          <TextBlock Text="Dağıtık AI Assistant" Foreground="#94A3B8" />
-          <Button Content="+ Yeni sohbet" Command="{Binding NewChatCommand}" />
-          <TextBox Watermark="Sohbet ara" Text="{Binding SearchText}" />
-        </StackPanel>
-        <StackPanel DockPanel.Dock="Bottom" Spacing="8">
-          <TextBlock Text="Plan / Kota" FontWeight="SemiBold" Foreground="#CBD5E1" />
-          <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#94A3B8" />
-        </StackPanel>
-      </DockPanel>
-    </Border>
-
-    <Border Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2" Background="#1B1E3A" CornerRadius="18" Padding="18" Margin="0,0,0,12">
-      <DockPanel>
-        <TextBlock Text="Vortex Desktop → Backend → Model Router → Official AI API" Foreground="#CBD5E1" FontSize="16" VerticalAlignment="Center" />
-        <Button DockPanel.Dock="Right" Content="Bağlan" Command="{Binding ConnectCommand}" />
-      </DockPanel>
-    </Border>
-
-    <Border Grid.Column="1" Grid.Row="1" Background="#111428" CornerRadius="20" Padding="16" Margin="0,0,12,0">
-      <Grid RowDefinitions="*,Auto">
-        <ScrollViewer Grid.Row="0">
-          <ItemsControl ItemsSource="{Binding Messages}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Background="#202447" CornerRadius="14" Padding="14" Margin="0,0,0,10">
-                  <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding Role}" Foreground="#8BE9FD" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="#F8FAFC" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
-          <TextBox Grid.Column="0" Text="{Binding InputText}" Watermark="Mesaj yazın..." AcceptsReturn="True" MinHeight="48" />
-          <Button Grid.Column="1" Margin="10,0,0,0" Content="🎙" Command="{Binding PushToTalkCommand}" />
-          <Button Grid.Column="2" Margin="10,0,0,0" Content="Gönder" Command="{Binding SendCommand}" />
-        </Grid>
-      </Grid>
-    </Border>
-
-    <Border Grid.Column="2" Grid.Row="1" Background="#181B34" CornerRadius="20" Padding="16">
-      <StackPanel Spacing="14">
-        <TextBlock Text="Sağ Panel" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
-        <TextBlock Text="Aktif model" Foreground="#94A3B8" />
-        <TextBlock Text="{Binding ActiveModel}" Foreground="#F8FAFC" />
-        <TextBlock Text="Local Agent" Foreground="#94A3B8" />
-        <TextBlock Text="127.0.0.1:47891 / güvenli araç arayüzü" TextWrapping="Wrap" Foreground="#CBD5E1" />
-        <TextBlock Text="Dosya ve proje bağlamı" Foreground="#94A3B8" />
-        <Border Background="#202447" CornerRadius="14" Padding="12">
-          <TextBlock Text="İlk derlenebilir sürümde servis sözleşmeleri ve güvenlik sınırları hazır." TextWrapping="Wrap" />
-        </Border>
+  <Grid Margin="14">
+    <Border IsVisible="{Binding IsWelcomeVisible}" Background="#181B34" CornerRadius="24" Padding="36" MaxWidth="560" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="18">
+        <TextBlock Text="Vortex AI Assistant" FontSize="32" FontWeight="Bold" Foreground="#F8FAFC" HorizontalAlignment="Center" />
+        <TextBlock Text="Hesabınıza güvenli şekilde web sitesi üzerinden giriş yapın. Parolanız masaüstü uygulamasına gönderilmez." TextWrapping="Wrap" Foreground="#CBD5E1" TextAlignment="Center" />
+        <Button Content="Giriş Yap" Command="{Binding LoginCommand}" HorizontalAlignment="Stretch" />
+        <Button Content="Kayıt Ol" Command="{Binding RegisterCommand}" HorizontalAlignment="Stretch" />
+        <Button Content="İptal" Command="{Binding CancelLoginCommand}" IsVisible="{Binding IsAuthenticating}" />
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#94A3B8" TextAlignment="Center" />
       </StackPanel>
     </Border>
+
+    <Grid IsVisible="{Binding IsAuthenticated}" ColumnDefinitions="260,*,300" RowDefinitions="64,*">
+      <Border Grid.RowSpan="2" Grid.Column="0" Background="#181B34" CornerRadius="20" Padding="16" Margin="0,0,12,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Spacing="12">
+            <TextBlock Text="Vortex" FontSize="28" FontWeight="Bold" Foreground="#F8FAFC" />
+            <TextBlock Text="Dağıtık AI Assistant" Foreground="#94A3B8" />
+            <Button Content="+ Yeni sohbet" Command="{Binding NewChatCommand}" />
+            <TextBox Watermark="Sohbet ara" Text="{Binding SearchText}" />
+          </StackPanel>
+          <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+            <TextBlock Text="Plan / Kota" FontWeight="SemiBold" Foreground="#CBD5E1" />
+            <TextBlock Text="{Binding CurrentUserText}" TextWrapping="Wrap" Foreground="#94A3B8" />
+            <TextBlock Text="{Binding HermesStatusText}" TextWrapping="Wrap" Foreground="#94A3B8" />
+            <Button Content="Çıkış Yap" Command="{Binding LogoutCommand}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2" Background="#1B1E3A" CornerRadius="18" Padding="18" Margin="0,0,0,12">
+        <DockPanel>
+          <TextBlock Text="Vortex Desktop → Backend → Model Router → Official AI API" Foreground="#CBD5E1" FontSize="16" VerticalAlignment="Center" />
+          <TextBlock DockPanel.Dock="Right" Text="{Binding StatusText}" Foreground="#94A3B8" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Column="1" Grid.Row="1" Background="#111428" CornerRadius="20" Padding="16" Margin="0,0,12,0">
+        <Grid RowDefinitions="*,Auto">
+          <ScrollViewer Grid.Row="0">
+            <ItemsControl ItemsSource="{Binding Messages}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="#202447" CornerRadius="14" Padding="14" Margin="0,0,0,10">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="{Binding Role}" Foreground="#8BE9FD" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="#F8FAFC" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+            <TextBox Grid.Column="0" Text="{Binding InputText}" Watermark="Mesaj yazın..." AcceptsReturn="True" MinHeight="48" />
+            <Button Grid.Column="1" Margin="10,0,0,0" Content="🎙" Command="{Binding PushToTalkCommand}" />
+            <Button Grid.Column="2" Margin="10,0,0,0" Content="Gönder" Command="{Binding SendCommand}" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="2" Grid.Row="1" Background="#181B34" CornerRadius="20" Padding="16">
+        <StackPanel Spacing="14">
+          <TextBlock Text="Sağ Panel" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
+          <TextBlock Text="Aktif model" Foreground="#94A3B8" />
+          <TextBlock Text="{Binding ActiveModel}" Foreground="#F8FAFC" />
+          <TextBlock Text="Hermes Agent" Foreground="#94A3B8" />
+          <TextBlock Text="{Binding HermesStatusText}" TextWrapping="Wrap" Foreground="#CBD5E1" />
+          <TextBlock Text="Oturum" Foreground="#94A3B8" />
+          <Border Background="#202447" CornerRadius="14" Padding="12">
+            <TextBlock Text="Web tabanlı giriş tamamlandı. Token yerelde saklandı; parola Desktop'a dönmedi." TextWrapping="Wrap" />
+          </Border>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </Window>

@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Vortex.Shared\Vortex.Shared.csproj" />
     <ProjectReference Include="..\Vortex.Server\Vortex.Server.csproj" />
+    <ProjectReference Include="..\Vortex.Desktop\Vortex.Desktop.csproj" />
   </ItemGroup>
 
 </Project>

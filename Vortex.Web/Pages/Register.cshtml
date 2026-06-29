@@ -1,0 +1,22 @@
+@page "/register"
+@model Vortex.Web.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Vortex Kayıt";
+}
+<section class="auth-card">
+    <h1>Vortex hesabı oluştur</h1>
+    <p>Hesabınız Free plan ile başlar ve size özel Hermes profili hazırlanır.</p>
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="error">@Model.ErrorMessage</div> }
+    <form method="post">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <label>Ad / Görünen ad<input asp-for="DisplayName" required /></label>
+        <label>E-posta<input asp-for="Email" type="email" required /></label>
+        <label>Parola<input asp-for="Password" type="password" required minlength="8" /></label>
+        <label>Parola tekrarı<input asp-for="ConfirmPassword" type="password" required minlength="8" /></label>
+        <label class="check"><input asp-for="AcceptTerms" type="checkbox" /> Kullanım koşullarını kabul ediyorum.</label>
+        <button type="submit">Kayıt Ol</button>
+    </form>
+    <p>Zaten hesabınız var mı? <a href="/login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "/")">Giriş yap</a></p>
+</section>
+<style>
+body{margin:0;background:linear-gradient(135deg,#101213,#15172E);color:#eef2ff;font-family:Inter,Segoe UI,sans-serif}.auth-card{max-width:440px;margin:7vh auto;padding:32px;background:#181b34;border-radius:22px}label{display:block;margin:14px 0;color:#cbd5e1}input{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff}.check input{display:inline;width:auto}button{width:100%;padding:13px;border:0;border-radius:14px;background:#8be9fd;color:#08111a;font-weight:700}.error{padding:12px;background:#7f1d1d;border-radius:12px}</style>

@@ -80,6 +80,15 @@ public sealed record AgentChatResponse(string RequestId, string Response, string
 public sealed record AgentTaskDto(Guid Id, string Name, string Schedule, string TimeZone, bool IsEnabled, DateTimeOffset CreatedAt);
 public sealed record CreateAgentTaskRequest(string Name, string Schedule, string TimeZone);
 
+public sealed record StartDesktopAuthRequest(string StateHash, string CodeChallenge, string CallbackUri);
+public sealed record StartDesktopAuthResponse(Guid SessionId, string AuthorizationUrl, DateTimeOffset ExpiresAt);
+public sealed record CompleteDesktopAuthRequest(Guid SessionId, string State);
+public sealed record CompleteDesktopAuthResponse(string CallbackUrl, string Message);
+public sealed record ExchangeDesktopCodeRequest(Guid SessionId, string Code, string CodeVerifier, string State);
+public sealed record DesktopAuthStatusResponse(Guid SessionId, bool Completed, bool Consumed, DateTimeOffset ExpiresAt);
+public sealed record WebRegisterRequest(string Email, string Password, string DisplayName, bool AcceptTerms);
+public sealed record WebLoginRequest(string Email, string Password, bool RememberMe);
+
 public sealed record LocalAgentHello(string AgentName, string Version, string Platform, IReadOnlyList<LocalToolDescriptor> Tools);
 public sealed record LocalToolDescriptor(string Name, string Description, bool IsEnabled, bool RequiresConfirmation, LocalToolRiskLevel RiskLevel);
 public sealed record LocalToolRequest(string RequestId, string ToolName, Dictionary<string, string> Arguments, DateTimeOffset ExpiresAt, string Signature, bool UserConfirmed);

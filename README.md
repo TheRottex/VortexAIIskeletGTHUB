@@ -8,6 +8,7 @@ Vortex AI Assistant; Avalonia tabanlı Desktop Client, güvenli Local Agent, mer
 - `Vortex.LocalAgent`: Yalnızca `127.0.0.1` üzerinde çalışan yerel ajan.
 - `Vortex.Server`: ASP.NET Core API, JWT oturum, SQLite veri tabanı, model router ve OpenAI uyumlu streaming proxy.
 - `Vortex.Admin`: Ayrı admin paneli başlangıç yüzeyi.
+- `Vortex.Web`: Kullanıcı kayıt/giriş ve Desktop authorization web sitesi.
 - `Vortex.Shared`: DTO, sözleşme, rol, özellik ve güvenlik yardımcıları.
 - `Vortex.Tests`: Temel sözleşme testleri.
 
@@ -26,12 +27,25 @@ dotnet restore VortexAI.sln
 dotnet build VortexAI.sln
 
 dotnet run --project Vortex.Server --urls http://127.0.0.1:5000
+dotnet run --project Vortex.Web --urls http://127.0.0.1:5080
 dotnet run --project Vortex.LocalAgent
 dotnet run --project Vortex.Admin
 dotnet run --project Vortex.Desktop
 ```
 
-Desktop ilk bağlantıda geliştirme kullanıcısı olarak `owner@vortex.local` hesabını oluşturmayı dener. Üretimde bu akış ilk kurulum ekranıyla değiştirilmelidir.
+Windows geliştirme ortamında tüm servisleri health check ile sırayla başlatmak için:
+
+```powershell
+./scripts/start-dev.ps1
+```
+
+Yalnızca bu scriptin başlattığı süreçleri kapatmak için:
+
+```powershell
+./scripts/stop-dev.ps1
+```
+
+Desktop artık sabit geliştirme kullanıcısı/parolası oluşturmaz. Giriş ve kayıt işlemleri `Vortex.Web` üzerinden yapılır; Desktop yalnızca Authorization Code + PKCE benzeri kısa ömürlü akışla token alır.
 
 ## Test
 
@@ -45,12 +59,34 @@ Hermes izolasyon ve Free plan limitleri için çalışan integration test:
 dotnet test VortexAI.sln -c Release --filter HermesIsolationIntegrationTests
 ```
 
+Desktop web login + PKCE authorization code akışı için çalışan integration test:
+
+```bash
+dotnet test VortexAI.sln -c Release --filter DesktopAuthIntegrationTests
+```
+
 Tam doğrulama komutu:
 
 ```bash
 dotnet build VortexAI.sln -c Release
 dotnet test VortexAI.sln -c Release --no-build
 ```
+
+## Desktop web giriş akışı
+
+Desktop giriş yapmamışsa karşılama ekranı gösterir. `Giriş Yap` ve `Kayıt Ol` düğmeleri varsayılan tarayıcıyı açar.
+
+Akış:
+
+1. Desktop rastgele `state` ve `code_verifier` üretir.
+2. Server'da kısa ömürlü `DesktopAuthSessions` kaydı oluşturulur.
+3. Tarayıcı `Vortex.Web /desktop/authorize` sayfasına gider.
+4. Kullanıcı `/register` veya `/login` üzerinden web sitesinde kimlik doğrular.
+5. Web sitesi authorization code üretimini Server'a onaylatır.
+6. Başarı sayfası “Giriş başarılı. Artık işleminize Vortex uygulamasından devam edebilirsiniz.” mesajını gösterir.
+7. Tarayıcı loopback callback adresine döner.
+8. Desktop `state` doğrular, code'u PKCE verifier ile Server'da token'a çevirir.
+9. URL içinde JWT taşınmaz; authorization code tek kullanımlık ve kısa ömürlüdür.
 
 ## Hermes Agent izolasyonu
 

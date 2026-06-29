@@ -14,8 +14,10 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var backend = new BackendClient(new HttpClient { BaseAddress = new Uri("http://127.0.0.1:5000") });
-            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(backend) };
+            var tokenStorage = new TokenStorageService();
+            var backend = new BackendClient(new HttpClient { BaseAddress = new Uri("http://127.0.0.1:5000") }, tokenStorage);
+            var auth = new DesktopAuthenticationService(backend);
+            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(backend, auth) };
         }
         base.OnFrameworkInitializationCompleted();
     }

@@ -14,6 +14,7 @@ builder.Services.AddScoped<IHermesProfileService, HermesProfileService>();
 builder.Services.AddScoped<IAgentPolicyService, AgentPolicyService>();
 builder.Services.AddScoped<IAgentUsageService, AgentUsageService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<DesktopAuthService>();
 builder.Services.AddScoped<ModelRouter>();
 builder.Services.AddScoped<AiProviderClient>();
 builder.Services.AddScoped<ChatService>();
@@ -38,6 +39,50 @@ app.MapPost("/api/auth/login", async (LoginRequest request, AuthService auth, Ca
 {
     try { return Results.Ok(await auth.LoginAsync(request, ct)); }
     catch { return Results.Unauthorized(); }
+});
+
+app.MapPost("/api/web/auth/register", async (WebRegisterRequest request, AuthService auth, CancellationToken ct) =>
+{
+    try { return Results.Ok(await auth.RegisterWebUserAsync(request, ct)); }
+    catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapPost("/api/web/auth/login", async (WebLoginRequest request, AuthService auth, CancellationToken ct) =>
+{
+    try { return Results.Ok(await auth.LoginAsync(new LoginRequest(request.Email, request.Password), ct)); }
+    catch { return Results.Unauthorized(); }
+});
+
+app.MapPost("/api/desktop-auth/sessions", async (StartDesktopAuthRequest request, DesktopAuthService desktopAuth, CancellationToken ct) =>
+{
+    try { return Results.Ok(await desktopAuth.StartAsync(request, ct)); }
+    catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapGet("/api/desktop-auth/sessions/{id:guid}", async (Guid id, DesktopAuthService desktopAuth, CancellationToken ct) =>
+{
+    try { return Results.Ok(await desktopAuth.GetStatusAsync(id, ct)); }
+    catch { return Results.NotFound(); }
+});
+
+app.MapPost("/api/desktop-auth/sessions/{id:guid}/complete", async (HttpContext context, Guid id, CompleteDesktopAuthRequest request, DesktopAuthService desktopAuth, CancellationToken ct) =>
+{
+    var userId = context.GetUserId();
+    if (userId is null) return Results.Unauthorized();
+    try { return Results.Ok(await desktopAuth.CompleteAsync(id, userId.Value, request.State, ct)); }
+    catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapPost("/api/desktop-auth/token", async (ExchangeDesktopCodeRequest request, DesktopAuthService desktopAuth, CancellationToken ct) =>
+{
+    try { return Results.Ok(await desktopAuth.ExchangeAsync(request, ct)); }
+    catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
+});
+
+app.MapPost("/api/desktop-auth/sessions/{id:guid}/cancel", async (Guid id, string state, DesktopAuthService desktopAuth, CancellationToken ct) =>
+{
+    try { await desktopAuth.CancelAsync(id, state, ct); return Results.NoContent(); }
+    catch (Exception ex) { return Results.BadRequest(new { message = ex.Message }); }
 });
 
 app.MapGet("/api/me", async (HttpContext context, AuthService auth, CancellationToken ct) =>

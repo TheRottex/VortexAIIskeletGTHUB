@@ -2,67 +2,76 @@
 
 Tarih: 2026-06-29
 
-## Bugünkü hedef
+## Mevcut korunan durum
 
-Vortex'e kayıt olan test kullanıcıları için tamamen izole Hermes Agent profili oluşturmak ve Free plan limitlerini Vortex Server tarafında Hermes çalışmadan önce uygulatmak.
+Hermes profil izolasyonu ve Free plan limit sistemi korunmuştur. Bu sistem yeniden yazılmadı.
 
-## Tamamlanan işler
+## Bugünkü düzeltme hedefi
 
-- `UserAgentProfiles` tablosu eklendi.
-- `AgentUsageCounters` tablosu eklendi.
-- `AgentExecutionLogs` tablosu eklendi.
-- `AgentScheduledTasks` tablosu eklendi.
-- Merkezi `PlanAgentPolicies` tablosu eklendi.
-- Free plan seed policy değerleri eklendi:
-  - Günlük agent run limiti: 5
-  - Aktif scheduled task limiti: 3
-  - Kalıcı memory limiti: 25
-  - Sub-agent kapalı
-  - Terminal kapalı
-  - Sistem komutu kapalı
-  - Workspace dışı dosya erişimi kapalı
-  - Maksimum çalışma süresi: 60 saniye
-  - Eşzamanlı run limiti: 1
-- Kayıt akışına Hermes profil provisioning eklendi.
-- Her kullanıcı için ayrı profil/home dizini oluşturuluyor:
-  - `config`
-  - `memory`
-  - `sessions`
-  - `cron`
-  - `skills`
-  - `workspace`
-  - `logs`
-- E-posta klasör adı olarak kullanılmıyor; güvenli `UserId` kullanılıyor.
-- `IAgentIsolationService` / `AgentIsolationService` eklendi.
-- `IHermesProfileService` / `HermesProfileService` eklendi.
-- `IHermesGatewayService` / `HermesGatewayService` eklendi.
-- `FakeHermesGatewayService` eklendi.
-- `IAgentPolicyService` / `AgentPolicyService` eklendi.
-- `IAgentUsageService` / `AgentUsageService` eklendi.
-- Endpointler eklendi:
-  - `POST /api/agent/provision`
-  - `GET /api/agent/status`
-  - `POST /api/agent/chat`
-  - `GET /api/agent/tasks`
-  - `POST /api/agent/tasks`
-  - `DELETE /api/agent/tasks/{id}`
-- Agent chat endpoint'i istemciden gelen `RequestedProfileId` değerini güvenlik için dikkate almıyor; profil token içindeki `UserId` ile bulunuyor.
-- Limit aşıldığında Hermes gateway çağrılmadan `429 Too Many Requests` dönüyor.
-- Başarılı agent çağrısından sonra sayaç artırılıyor.
-- Integration test eklendi:
-  - User A ve User B kayıt olur.
-  - Farklı Hermes profile/home değerleri doğrulanır.
-  - User A memory verisi User B tarafından görülemez.
-  - User A 5 başarılı agent çağrısı yapar.
-  - 6. çağrı 429 döner.
-  - User A 3 aktif görev oluşturur.
-  - 4. görev 429 döner.
-  - User B sayaçları User A limitlerinden etkilenmez.
-  - Farklı profile ID gönderilse de server kendi kullanıcı profilini kullanır.
+Browser callback başarılı çalışmasına rağmen Vortex Desktop'ın giriş yapmış duruma geçmemesi düzeltildi. Yalnızca callback sonrası Desktop oturum tamamlama akışına müdahale edildi.
 
-## Doğrulama
+## Yapılan düzeltmeler
 
-Çalıştırılan final komutlar:
+- Desktop callback başarı yanıtı artık yalnızca şu adımlar tamamlandıktan sonra tarayıcıya gönderiliyor:
+  1. Callback alındı.
+  2. State doğrulandı.
+  3. Authorization code alındı.
+  4. Code-token exchange çağrısı yapıldı.
+  5. Exchange HTTP durum kodu alındı.
+  6. AuthResponse parse edildi.
+  7. Access token kaydedildi.
+  8. `/api/me` çağrısı başarılı oldu.
+- Hassas `state`, `code`, `verifier` ve token değerleri loglanmıyor.
+- Desktop log dosyası eklendi:
+  - `%LOCALAPPDATA%/VortexAI/logs/desktop-yyyyMMdd.log`
+- `ExchangeDesktopCodeAsync` yerine durum kodu ve güvenli hata gövdesi döndüren detaylı exchange metodu eklendi.
+- Exchange başarısız olursa callback tarayıcı sayfasında HTTP durum kodu ve güvenli hata gövdesi gösteriliyor.
+- `auth.User` nesnesine körü körüne güvenme kaldırıldı; token kaydedildikten sonra `/api/me` ile güncel kullanıcı alınıyor.
+- ViewModel UI state güncellemeleri UI thread üzerinden yapılıyor.
+- Test ortamında Avalonia dispatcher loop yoksa UI action doğrudan çalıştırılıyor; gerçek uygulamada Dispatcher kullanılıyor.
+- Hermes durumu alınamazsa kullanıcı girişi geri alınmıyor; sadece şu metin gösteriliyor:
+  - `Hermes durumu alınamadı`
+- `AuthenticateAsync` catch bloğu exception ayrıntısını desktop log dosyasına yazıyor.
+- `IsAuthenticated` değiştiğinde `IsWelcomeVisible` güncelleniyor.
+- `MainWindow.axaml` görünürlük bindingleri kontrol edildi:
+  - Welcome: `IsWelcomeVisible`
+  - Ana ekran: `IsAuthenticated`
+- Authorization state dönüşü düzeltildi:
+  - `state` artık callback URI içine gömülmüyor.
+  - Desktop authorization URL üzerinden web akışına taşınıyor.
+  - Web `/desktop/authorize` state'i server complete çağrısına gönderiyor.
+  - Server state hash doğrulayıp callback'e doğru state'i ekliyor.
+
+## Eklenen / güncellenen dosyalar
+
+```text
+Vortex.Shared/Contracts.cs
+Vortex.Server/Services/DesktopAuthService.cs
+Vortex.Server/Program.cs
+Vortex.Web/Pages/DesktopAuthorize.cshtml
+Vortex.Web/Pages/DesktopAuthorize.cshtml.cs
+Vortex.Desktop/Services/BackendClient.cs
+Vortex.Desktop/Services/DesktopAuthenticationService.cs
+Vortex.Desktop/Services/DesktopLogService.cs
+Vortex.Desktop/ViewModels/MainWindowViewModel.cs
+Vortex.Tests/DesktopAuthIntegrationTests.cs
+Vortex.Tests/DesktopViewModelAuthTests.cs
+Vortex.Tests/Vortex.Tests.csproj
+```
+
+## Testler
+
+Eklenen doğrulama:
+
+- Authorization code + PKCE integration testi güncellendi.
+- Server complete endpoint'i artık state doğruluyor.
+- ViewModel `LoginCommand` tamamlandığında:
+  - `IsAuthenticated == true`
+  - `IsWelcomeVisible == false`
+  - kullanıcı adı/planı görünüyor
+  - Hermes hatası kullanıcı girişini geri almıyor
+
+## Çalıştırılan komutlar
 
 ```bash
 dotnet build VortexAI.sln -c Release
@@ -73,11 +82,28 @@ Sonuç:
 
 ```text
 Build: başarılı, 0 uyarı, 0 hata
-Test: başarılı, 6/6 test geçti
+Test: başarılı, 8/8 test geçti
 ```
 
-Not: İlk `dotnet build VortexAI.sln` denemesi Debug çıktısında çalışan `Vortex.Desktop` süreçleri DLL kilitlediği için başarısız oldu. Kullanıcı süreçlerini zorla kapatmadım. Release build ve testler temiz şekilde geçti.
+## Gerçek servis durumu
 
-## Sonraki güvenli adım
+`powershell.exe -File scripts/start-dev.ps1` denendi ancak Windows PowerShell execution policy script çalıştırmayı engelledi.
 
-Gerçek Hermes executable varsa `Hermes:UseFakeGateway=false` ve `Hermes:ExecutablePath` ayarlanarak yalnızca provisioning komutu güvenli argümanlarla test edilmeli. Komut çıktıları gizli veri sızdırmamak için loglanmamalı.
+Script yerine bu oturumdan `dotnet run` ile servisleri başlatmayı denedim; sistemde zaten çalışan Debug süreçleri DLL dosyalarını kilitlediği için yeni süreçler derleme aşamasında durdu. Kullanıcıya ait çalışan süreçleri zorla kapatmadım.
+
+Mevcut çalışan servislerin health endpointleri kontrol edildi:
+
+```text
+Vortex.Server: 200 /health
+Vortex.Web: 200 /health
+Vortex.LocalAgent: 200 /health
+```
+
+Yeni kodla gerçek Desktop akışını manuel doğrulamak için mevcut çalışan Debug servisleri kapatılıp yeniden başlatılmalıdır:
+
+```powershell
+./scripts/stop-dev.ps1
+./scripts/start-dev.ps1
+```
+
+PowerShell script policy engeli devam ederse kullanıcı kendi oturumunda script çalıştırma politikasını izinli hale getirmelidir veya servisler elle başlatılmalıdır.

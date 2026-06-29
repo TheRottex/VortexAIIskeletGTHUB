@@ -1,0 +1,20 @@
+@page "/login"
+@model Vortex.Web.Pages.LoginModel
+@{
+    ViewData["Title"] = "Vortex Giriş";
+}
+<section class="auth-card">
+    <h1>Vortex’e giriş yap</h1>
+    <p>Giriş web sitesinde yapılır; parola masaüstü uygulamasına gönderilmez.</p>
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage)) { <div class="error">@Model.ErrorMessage</div> }
+    <form method="post">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <label>E-posta<input asp-for="Email" type="email" required /></label>
+        <label>Parola<input asp-for="Password" type="password" required /></label>
+        <label class="check"><input asp-for="RememberMe" type="checkbox" /> Beni hatırla</label>
+        <button type="submit">Giriş Yap</button>
+    </form>
+    <p>Hesabınız yok mu? <a href="/register?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "/")">Kayıt ol</a></p>
+</section>
+<style>
+body{margin:0;background:linear-gradient(135deg,#101213,#15172E);color:#eef2ff;font-family:Inter,Segoe UI,sans-serif}.auth-card{max-width:420px;margin:9vh auto;padding:32px;background:#181b34;border-radius:22px}label{display:block;margin:14px 0;color:#cbd5e1}input{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff}.check input{display:inline;width:auto}button{width:100%;padding:13px;border:0;border-radius:14px;background:#8be9fd;color:#08111a;font-weight:700}.error{padding:12px;background:#7f1d1d;border-radius:12px}</style>
